@@ -111,7 +111,6 @@ local UnrenderLocalEntity = function(uNetId)
             SetEntityAsNoLongerNeeded(entity)
         else
             DeleteEntity(entity)
-
         end
 
         state.rendered = false
@@ -146,6 +145,17 @@ local RenderLocalEntity = function(uNetId, entityIndex, entityData)
     local coords = entityData.coords
     local model = entityData.model
     local options = entityData.options
+
+    if not options.replace then
+        if not IsModelValid(model) then
+            error("RenderLocalEntity: Model "..model.." is not valid, uNetId: "..uNetId)
+        end
+
+        while not HasModelLoaded(model) do
+            RequestModel(model)
+            Citizen.Wait(1)
+        end
+    end
 
     Citizen.CreateThread(function()
         if options.replace then
@@ -350,8 +360,18 @@ RegisterNetEvent("Utility:Net:RefreshRotation", function(uNetId, rotation)
 end)
 
 RegisterNetEvent("Utility:Net:EntityCreated", function(_callId, uNetId)
+    local attempts = 0
+
     while not UtilityNet.DoesUNetIdExist(uNetId) do
-        Citizen.Wait(1)
+        attempts = attempts + 1
+
+        if attempts > 5 then
+            if DebugRendering then
+                error("EntityCreated", uNetId, "id not found after 10 attempts")
+            end
+            return
+        end
+        Citizen.Wait(100)
     end
 
     if CanEntityBeRendered(uNetId) then

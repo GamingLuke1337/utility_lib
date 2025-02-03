@@ -3108,6 +3108,53 @@ UtilityNet.DoesEntityExist = function(uNetId)
     return DoesEntityExist(UtilityNet.GetEntityFromUNetId(uNetId))
 end
 
+UtilityNet.GetClosestRenderedNetIdOfType = function(coords, radius, model)
+    local entities = exports["utility_lib"]:GetRenderedEntities()
+    local closest = nil
+    local minDist = math.huge
+    
+    for k, v in pairs(entities) do
+        if DoesEntityExist(v) and GetEntityModel(v) == model then
+            local dist = #(coords - GetEntityCoords(v))
+
+            if dist < minDist then
+                closest = k
+                minDist = dist
+            end
+        end
+    end
+
+    return closest
+end
+
+UtilityNet.GetClosestRenderedObjectOfType = function(coords, radius, model)
+    local closest = UtilityNet.GetClosestRenderedNetIdOfType(coords, radius, model)
+
+    if closest then
+        return UtilityNet.GetEntityFromUNetId(closest)    
+    end
+end
+
+UtilityNet.GetClosestNetIdOfType = function(coords, radius, model)
+    local entities = GlobalState.Entities
+
+    if type(model) == "string" then
+        model = GetHashKey(model)
+    end
+
+    if #entities == 0 then
+        return nil
+    end
+
+    for k, v in pairs(entities) do
+        local distance = #(coords - v.coords)
+
+        if distance < radius and v.model == model then
+            return v.id
+        end
+    end
+end
+
 UtilityNet.DeleteEntity = function(uNetId)
     TriggerServerEvent("Utility:Net:DeleteEntity", uNetId)
 
@@ -3122,7 +3169,7 @@ end
 UtilityNet.AttachToEntity = function(uNetId, object, bone, pos, rot, useSoftPinning, collision, rotationOrder, syncRot)
     local params = {bone = bone, pos = pos, rot = rot, useSoftPinning = useSoftPinning, collision = collision, rotationOrder = rotationOrder, syncRot = syncRot}
 
-    if NetworkGetEntityIsNetworked(object) and DoesEntityExist(object) then
+    if DoesEntityExist(object) and NetworkGetEntityIsNetworked(object) then
         TriggerServerEvent("Utility:Net:AttachToEntity", uNetId, NetworkGetNetworkIdFromEntity(object), params)
     else
         params.isUtilityNet = true
